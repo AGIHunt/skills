@@ -1,15 +1,19 @@
 ---
 name: agihunt
-description: Fetch real-time AI news and daily AI reports from AGI HUNT (agihunt.info). Use this skill whenever the user asks about "AI 日报" / AI daily report, "AGI Hunt", AI 资讯/快讯, the latest AI news, AI funding & investment (AI 投融资), AGI progress, AI research or new papers (最新论文), new model releases (模型发布), AI infrastructure (AI 基建/算力), embodied AI (具身智能), or "what happened in AI today/yesterday" — even if they don't name AGI Hunt explicitly. Also use when the user asks to install / set up / 接入 AGI HUNT (e.g. "帮我阅读并安装 https://agihunt.info/agent/v1/skill.md"). Covers hot/latest posts per topic channel for the last 3 days plus a daily structured report.
+description: Fetch real-time AI news and daily AI reports from AGI HUNT (agihunt.info). Use this skill whenever the user asks about "AI 日报" / AI daily report, "AGI Hunt", AI 资讯/快讯, the latest AI news, AI funding & investment (AI 投融资), AGI progress, AI research or new papers (最新论文), new model releases (模型发布), AI infrastructure (AI 基建/算力), embodied AI (具身智能), or "what happened in AI today/yesterday" — even if they don't name AGI Hunt explicitly. Also use when the user asks to 接入/authorize/set up AGI HUNT access, or pastes the URL of this file asking to install it — this skill owns the authorization flow, and if it is already installed and authorized, just confirm and proceed to normal use instead of re-installing. Covers hot/latest posts per topic channel for the last 3 days plus a daily structured report.
 ---
 
-# AGI HUNT 资讯接入 · v1.2.1
+# AGI HUNT 资讯接入 · v1.2.2
 
 通过 AGI HUNT Agent API 获取实时 AI 资讯:每日 AI 日报(结构化 Markdown)、各主题频道的最热/最新帖子。数据来自 AGI HUNT 对全网 AI 信号(X、微信公众号等)的实时采集、聚簇与热度排序。
 
-**当前 skill 版本:`1.2.1`**(随请求 header 发送;服务器据此判断是否需要更新本文件,见「错误码」)。
+**当前 skill 版本:`1.2.2`**(随请求 header 发送;服务器据此判断是否需要更新本文件,见「错误码」)。
+
+**Windows 用户的 agent 注意**:本文所有示例按 macOS/Linux 的 bash 编写;在 Windows 上请自行换成等价的 PowerShell/CMD 逻辑(`~` → `%USERPROFILE%`,`chmod 600` → 忽略或收紧文件 ACL,`curl`/`date` 用对应命令),保持语义一致即可,不必逐字照搬。
 
 ## 如果你是通过链接首次读到本文件(用户让你「阅读并安装」)
+
+**幂等提示**:若本 skill 已安装且 `~/.config/agihunt/api_key` 已存在,说明早已接入——不要重复安装,直接发一次正常请求确认可用(版本过期服务器会用 426 告诉你),然后告知用户即可。
 
 1. **把本文件保存为你的 skill**:Claude Code 存到 `~/.claude/skills/agihunt/SKILL.md`;其他 agent 存到你自己的持久 skill/指令目录,并确保以后相关话题会再次读到它。
    ```bash
@@ -24,7 +28,7 @@ description: Fetch real-time AI news and daily AI reports from AGI HUNT (agihunt
    ```bash
    ah_authorize() {
      local resp dc url deadline out
-     resp=$(curl -sS -X POST -H "User-Agent: agihunt-skill/1.2.1" https://agihunt.info/agent/v1/device/code) || return 1
+     resp=$(curl -sS -X POST -H "User-Agent: agihunt-skill/1.2.2" https://agihunt.info/agent/v1/device/code) || return 1
      dc=$(printf %s "$resp" | python3 -c 'import json,sys;print(json.load(sys.stdin)["device_code"])')
      url=$(printf %s "$resp" | python3 -c 'import json,sys;print(json.load(sys.stdin)["verification_url"])')
      echo "请在浏览器打开并点击「授权」:$url"
@@ -32,7 +36,7 @@ description: Fetch real-time AI news and daily AI reports from AGI HUNT (agihunt
      deadline=$(( $(date +%s) + 600 ))
      while [ "$(date +%s)" -lt "$deadline" ]; do
        sleep 5   # 轮询间隔以 device/code 响应的 interval 为准(当前 5),不要更快
-       out=$(curl -sS -X POST -H "User-Agent: agihunt-skill/1.2.1" -H "Content-Type: application/json" \
+       out=$(curl -sS -X POST -H "User-Agent: agihunt-skill/1.2.2" -H "Content-Type: application/json" \
          -d "{\"device_code\":\"$dc\"}" https://agihunt.info/agent/v1/device/token)
        case "$out" in
          *api_key*)
@@ -61,7 +65,7 @@ description: Fetch real-time AI news and daily AI reports from AGI HUNT (agihunt
 缓存、鉴权、版本 header 都封装在这里。**相同 URL 十分钟内直接命中本地缓存**——这是使用本 API 的礼貌前提,不要绕过。诊断信息(缓存命中/HTTP 码)打到 stderr;**成败判断看 stderr 的 HTTP 码与响应体里的 `error.code`,不要依赖 `$?`**(shell 返回码只有 0/1):
 
 ```bash
-AH_VER="1.2.1"
+AH_VER="1.2.2"
 ah_fetch() {
   local url="$1"
   local key="${AGIHUNT_API_KEY:-$(cat ~/.config/agihunt/api_key 2>/dev/null)}"
